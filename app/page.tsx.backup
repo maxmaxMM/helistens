@@ -1,7 +1,8 @@
 "use client";
 
+import { DailyVerse } from "@/components/DailyVerse";
+import { SavedDrawer, SaveButton } from "@/components/SavedVerses";
 import { useConversation } from "@/hooks/useConversation";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   getHasUsedFullExperience,
@@ -48,7 +49,6 @@ export default function Home() {
   const [spiritualUnlocked, setSpiritualUnlocked] = useState(true);
   const [sessionReflectCount, setSessionReflectCount] = useState(0);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
   const paywallDismissedRef = useRef(false);
   const { addUserMessage, addAssistantMessage, getHistory } = useConversation();
 
@@ -100,8 +100,6 @@ export default function Home() {
           input,
           history: getHistory(),
         }),
-      });
-
       const data = await res.json();
 
       if (!res.ok) {
@@ -148,34 +146,11 @@ export default function Home() {
     setShowPaywall(false);
   }
 
-
-  const handleSave = () => {
-    if (!resultData?.verse_text || !resultData?.verse_ref) return;
-
-    try {
-      const raw = localStorage.getItem("savedVerses");
-      const parsed = raw ? JSON.parse(raw) : [];
-      const next = Array.isArray(parsed) ? parsed : [];
-
-      next.unshift({
-        text: resultData.verse_text,
-        reference: resultData.verse_ref,
-        createdAt: Date.now(),
-      });
-
-      localStorage.setItem("savedVerses", JSON.stringify(next));
-    } catch (err) {
-      console.error("Failed to save verse", err);
-    }
-
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1200);
-  };
-
   const locked = showResult && !spiritualUnlocked;
 
   return (
     <main className="main">
+      <DailyVerse />
       {!showResult ? (
         <>
           <h1>He listens.</h1>
@@ -200,13 +175,6 @@ export default function Home() {
         </>
       ) : (
         <>
-          <span
-            className={`saved-indicator${savedFlash ? " saved-indicator--visible" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            Saved
-          </span>
           <div className="bubble">{input}</div>
 
           <div className="card main-reply">
@@ -261,31 +229,23 @@ export default function Home() {
           ) : (
             <>
               <div className="card">
-                <div className="verse-card-head">
-                  <h3>📖 A verse for you</h3>
-                  <button
-                    type="button"
-                    className={`verse-bookmark${savedFlash ? " verse-bookmark--active" : ""}`}
-                    onClick={handleSave}
-                  >
-                    🔖
-                  </button>
-                </div>
+                <h3>📖 A verse for you</h3>
                 <p className="verse-text">
                   &quot;{resultData?.verse_text}&quot;
                 </p>
                 <span className="verse-ref">{resultData?.verse_ref}</span>
               </div>
+              <SaveButton 
+  text={resultData?.verse_text ?? ""} 
+  ref={resultData?.verse_ref ?? ""} 
+/>
+
               <div className="card">
                 <h3>🙏 A simple prayer</h3>
                 <p>{resultData?.prayer}</p>
               </div>
             </>
           )}
-
-          <Link href="/saved" className="view-saved-link">
-            View saved
-          </Link>
 
           <div className="bottom">
             <button type="button" onClick={handleTalkAgain}>
