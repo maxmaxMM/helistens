@@ -1,497 +1,261 @@
 "use client";
 
-import { useConversation } from "@/hooks/useConversation";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import {
-  getHasUsedFullExperience,
-  isProUser,
-  PAYWALL_COPY,
-  previewPrayer,
-  previewVerse,
-  setHasUsedFullExperience,
-  setProSubscriber,
-} from "@/lib/freemium";
+import type { CSSProperties } from "react";
 
-type ReflectResponse = {
-  reply: string;
-  insight: string;
-  verse_text: string;
-  verse_ref: string;
-  prayer: string;
-  short_comfort?: string;
-};
-
-function LockIcon() {
-  return (
-    <span className="locked-feature__icon" aria-hidden>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v10H6V11z"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </span>
-  );
-}
+/** Headline A/B: `1` = default, `2` = alternate. */
+const HEADLINE_VARIANT = 1 as 1 | 2;
 
 export default function Home() {
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showResult, setShowResult] = useState(false);
-  const [error, setError] = useState("");
-  const [resultData, setResultData] = useState<ReflectResponse | null>(null);
-
-  const [isPro, setIsPro] = useState(false);
-  const [spiritualUnlocked, setSpiritualUnlocked] = useState(true);
-  const [sessionReflectCount, setSessionReflectCount] = useState(0);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
-  const [shareCopiedFlash, setShareCopiedFlash] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const paywallDismissedRef = useRef(false);
-  const { addUserMessage, addAssistantMessage, getHistory } = useConversation();
-
-  useEffect(() => {
-    setIsPro(isProUser());
-  }, []);
-
-  useEffect(() => {
-    if (!showPaywall) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [showPaywall]);
-
-  useEffect(() => {
-    if (
-      !showResult ||
-      spiritualUnlocked ||
-      sessionReflectCount !== 2 ||
-      isPro
-    ) {
-      return;
-    }
-    const id = window.setTimeout(() => {
-      if (!paywallDismissedRef.current) setShowPaywall(true);
-    }, 2800);
-    return () => window.clearTimeout(id);
-  }, [showResult, spiritualUnlocked, sessionReflectCount, isPro]);
-
-  function openPaywall() {
-    setShowPaywall(true);
-  }
-
-  async function handleTalk() {
-    if (!input.trim()) return;
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/reflect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          input,
-          history: getHistory(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data?.error || "Something went wrong.");
-        setLoading(false);
-        return;
-      }
-
-      const pro = isProUser();
-      const hadFullBefore = getHasUsedFullExperience();
-      const unlocked = pro || !hadFullBefore;
-
-      setSessionReflectCount((c) => c + 1);
-      setResultData(data);
-      setSpiritualUnlocked(unlocked);
-
-      if (!pro && !hadFullBefore) {
-        setHasUsedFullExperience();
-      }
-
-      setShowResult(true);
-    } catch (err) {
-      console.error(err);
-      setError("Could not reach the server.");
-    }
-
-    setLoading(false);
-  }
-
-  function handleTalkAgain() {
-    setShowResult(false);
-    setError("");
-  }
-
-  function dismissPaywall() {
-    paywallDismissedRef.current = true;
-    setShowPaywall(false);
-  }
-
-  function handleSubscribe() {
-    setProSubscriber();
-    setIsPro(true);
-    setSpiritualUnlocked(true);
-    setShowPaywall(false);
-  }
-
-
-  const handleSave = () => {
-    if (!resultData?.verse_text || !resultData?.verse_ref) return;
-
-    try {
-      const raw = localStorage.getItem("savedVerses");
-      const parsed = raw ? JSON.parse(raw) : [];
-      const next = Array.isArray(parsed) ? parsed : [];
-
-      next.unshift({
-        text: resultData.verse_text,
-        reference: resultData.verse_ref,
-        createdAt: Date.now(),
-      });
-
-      localStorage.setItem("savedVerses", JSON.stringify(next));
-    } catch (err) {
-      console.error("Failed to save verse", err);
-    }
-
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1200);
+  const storeCtaBase: CSSProperties = {
+    width: "100%",
+    minHeight: "74px",
+    borderRadius: "15px",
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    justifyContent: "center",
+    padding: "17px 24px",
+    textDecoration: "none",
+    transition: "transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease",
   };
 
-  const locked = showResult && !spiritualUnlocked;
-  const shareData = buildShareData();
+  const storePrimaryStyle: CSSProperties = {
+    ...storeCtaBase,
+    background: "#000000",
+    color: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.28)",
+    boxShadow:
+      "0 8px 22px rgba(0,0,0,0.52), 0 0 0 1px rgba(255,255,255,0.09) inset, 0 0 28px rgba(130,175,255,0.34)",
+  };
 
-  function buildShareData() {
-    if (!resultData) return null;
+  const storeSecondaryStyle: CSSProperties = {
+    ...storeCtaBase,
+    background: "#000000",
+    color: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.2)",
+    boxShadow:
+      "0 6px 18px rgba(0,0,0,0.46), 0 0 0 1px rgba(255,255,255,0.07) inset, 0 0 22px rgba(130,175,255,0.14), 0 0 1px rgba(160,190,255,0.35)",
+  };
 
-    const rawLine = (resultData.reply || "").trim();
-    const shortLine = rawLine.length > 140 ? `${rawLine.slice(0, 137)}...` : rawLine;
-    const comfortLine = resultData.short_comfort || "You are not alone.";
-    const verseRef = (resultData.verse_ref || "").trim();
-    const shareUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://helistens.app";
-    const finalUrl = `${shareUrl}/share?line=${encodeURIComponent(shortLine)}&comfort=${encodeURIComponent(comfortLine)}&ref=${encodeURIComponent(verseRef)}`;
-    const shareText = verseRef
-      ? `${shortLine}
-
-"${comfortLine}"
-
-— ${verseRef}
-
-helistens.app`
-      : `${shortLine}
-
-"${comfortLine}"
-
-helistens.app`;
-
-    return { shortLine, finalUrl, shareText };
-  }
-
-  function openShareWindow(url: string) {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-    
+  const ctaLabelStyle: CSSProperties = {
+    textAlign: "left",
+    lineHeight: 1.3,
+    fontSize: "17px",
+    fontWeight: 600,
+    color: "inherit",
+    textShadow: "0 1px 2px rgba(0,0,0,0.55)",
+  };
 
   return (
-    <main className="main">
-      {!showResult ? (
-        <>
-          <h1>He listens.</h1>
-          <p className="sub">Even when no one else does.</p>
-
-          <textarea
-            placeholder="Say what’s on your heart..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-
-          <button
-            type="button"
-            className="primary-button"
-            onClick={handleTalk}
-            disabled={loading}
-          >
-            {loading ? "Thinking..." : "Talk"}
-          </button>
-
-          {error ? <p className="error">{error}</p> : null}
-        </>
-      ) : (
-        <>
-          <span
-            className={`saved-indicator${savedFlash ? " saved-indicator--visible" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            Saved
-          </span>
-          <div className="bubble">{input}</div>
-
-          <div className="card main-reply">
-            <p>{resultData?.reply}</p>
-          </div>
-
-          <div className="card">
-            <h3>💛 What this means</h3>
-            <p>{resultData?.insight}</p>
-          </div>
-
-          {locked && sessionReflectCount === 2 ? (
-            <p className="lock-nudge" role="status">
-              I&apos;d like to guide you with a verse and a prayer again,
-              <br />
-              but that&apos;s part of full support.
-            </p>
-          ) : null}
-
-          {locked ? (
-            <>
-              <button
-                type="button"
-                className="card card--locked"
-                onClick={openPaywall}
-              >
-                <span className="locked-feature__row">
-                  <h3 className="locked-feature__title">📖 A verse for you</h3>
-                  <LockIcon />
-                </span>
-                <p className="locked-feature__preview locked-feature__preview--verse">
-                  &quot;{previewVerse(resultData?.verse_text ?? "")}&quot;
-                </p>
-                <span className="locked-feature__cta">Unlock full verse</span>
-              </button>
-
-              <button
-                type="button"
-                className="card card--locked"
-                onClick={openPaywall}
-              >
-                <span className="locked-feature__row">
-                  <h3 className="locked-feature__title">🙏 A simple prayer</h3>
-                  <LockIcon />
-                </span>
-                <p className="locked-feature__preview">
-                  {previewPrayer(resultData?.prayer ?? "")}
-                </p>
-                <span className="locked-feature__cta">Unlock full prayer</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="card">
-                <div className="verse-card-head">
-                  <h3>📖 A verse for you</h3>
-                  <button
-                    type="button"
-                    className={`verse-bookmark${savedFlash ? " verse-bookmark--active" : ""}`}
-                    onClick={handleSave}
-                  >
-                    🔖
-                  </button>
-                </div>
-                <p className="verse-text">
-                  &quot;{resultData?.verse_text}&quot;
-                </p>
-                <span className="verse-ref">{resultData?.verse_ref}</span>
-              </div>
-              <div className="card">
-                <h3>🙏 A simple prayer</h3>
-                <p>{resultData?.prayer}</p>
-              </div>
-            </>
-          )}
-
-          <Link href="/saved" className="view-saved-link">
-            View saved
-          </Link>
-
-          <div className="bottom">
-            <button type="button" onClick={handleTalkAgain}>
-              Talk again
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowShareModal(true)}
-            >
-              {shareCopiedFlash ? "Link copied" : "Share"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {showShareModal && shareData ? (
+    <>
+      <style>{`
+        .landing-store-cta--primary:hover {
+          transform: scale(1.03);
+          filter: brightness(1.12);
+          box-shadow:
+            0 10px 26px rgba(0,0,0,0.55),
+            0 0 0 1px rgba(255,255,255,0.12) inset,
+            0 0 34px rgba(140,185,255,0.4);
+        }
+        .landing-store-cta--primary:active {
+          transform: scale(0.99);
+        }
+        .landing-store-cta--secondary:hover {
+          transform: scale(1.03);
+          filter: brightness(1.08);
+          box-shadow:
+            0 8px 22px rgba(0,0,0,0.5),
+            0 0 0 1px rgba(255,255,255,0.1) inset,
+            0 0 28px rgba(130,175,255,0.22),
+            0 0 1px rgba(170,200,255,0.45);
+        }
+        .landing-store-cta--secondary:active {
+          transform: scale(0.99);
+        }
+        .landing-cta-grid {
+          display: grid;
+          gap: 12px;
+        }
+        @media (min-width: 780px) {
+          .landing-cta-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: stretch;
+            justify-content: center;
+          }
+        }
+      `}</style>
+      <main
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "28px 16px 40px",
+          backgroundImage:
+            "linear-gradient(rgba(5,10,25,0.58), rgba(5,10,25,0.78)), radial-gradient(circle at center, rgba(60,100,200,0.14), transparent 62%), url('/starry-sky.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        }}
+      >
         <div
-          onClick={() => setShowShareModal(false)}
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(5, 10, 25, 0.55)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
+            width: "100%",
+            maxWidth: "700px",
             display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            zIndex: 1000,
+            flexDirection: "column",
+            gap: "30px",
+            color: "white",
           }}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
+          <section style={{ textAlign: "center", display: "grid", gap: "12px" }}>
+            {HEADLINE_VARIANT === 1 ? (
+              <>
+                <h1 style={{ margin: 0, fontSize: "56px", letterSpacing: "-0.045em", lineHeight: 1.02 }}>
+                  He listens.
+                </h1>
+                <p style={{ margin: 0, fontSize: "20px", opacity: 0.8, lineHeight: 1.45 }}>
+                  Even when no one else does.
+                </p>
+              </>
+            ) : (
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: "52px",
+                  letterSpacing: "-0.045em",
+                  lineHeight: 1.08,
+                  display: "grid",
+                  gap: "6px",
+                  justifyItems: "center",
+                }}
+              >
+                <span style={{ display: "block" }}>When no one listens,</span>
+                <span style={{ display: "block" }}>He does.</span>
+              </h1>
+            )}
+            <p style={{ margin: 0, fontSize: "17px", opacity: 0.72, lineHeight: 1.5 }}>
+              When you feel lost, overwhelmed, or alone.
+            </p>
+          </section>
+
+          <section className="landing-cta-grid" style={{ width: "100%", maxWidth: "680px", margin: "0 auto" }}>
+            <a
+              href="https://apps.apple.com/app/YOUR_APP_ID"
+              target="_blank"
+              rel="noreferrer"
+              className="landing-store-cta--primary"
+              style={storePrimaryStyle}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: "28px",
+                  height: "28px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                aria-hidden
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </span>
+              <span style={ctaLabelStyle}>Download on the App Store</span>
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=YOUR_PACKAGE_NAME"
+              target="_blank"
+              rel="noreferrer"
+              className="landing-store-cta--secondary"
+              style={storeSecondaryStyle}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: "28px",
+                  height: "28px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                aria-hidden
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 20.5v-17c0-.59.34-1.11.88-1.35L13.77 12 3.88 21.85c-.54-.24-.88-.76-.88-1.35z" fill="#00D9FF" />
+                  <path d="M16.27 15.09L7.12 21.9l6.65-6.81 2.5 2.5z" fill="#00F076" />
+                  <path d="M7.12 2.1l9.15 6.81-2.5 2.5L7.12 2.1z" fill="#FFD23F" />
+                  <path d="M16.27 8.91L13.77 12l2.5 3.09 4.85-2.8c.54-.31.88-.83.88-1.42s-.34-1.11-.88-1.42l-4.85-2.8z" fill="#FF3A44" />
+                </svg>
+              </span>
+              <span style={ctaLabelStyle}>Get it on Google Play</span>
+            </a>
+          </section>
+
+          <section
             style={{
-              position: "relative",
-              zIndex: 1,
-              width: "100%",
-              maxWidth: "460px",
-              borderRadius: "28px 28px 0 0",
-              padding: "14px 18px 22px",
-              backgroundImage:
-                "linear-gradient(to top, rgba(20,30,60,0.66), rgba(20,30,60,0.48)), linear-gradient(rgba(8,12,24,0.32), rgba(8,12,24,0.32)), url('/starry-sky.jpg')",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              boxShadow:
-                "0 -10px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07)",
+              width: "min(90%, 100%)",
+              margin: "-14px auto 0",
+              borderRadius: "24px",
+              background: "rgba(8,12,28,0.4)",
+              padding: "24px 20px",
               display: "grid",
-              gap: "12px",
+              gap: "16px",
+              minHeight: "200px",
+              boxShadow: "0 10px 26px rgba(0,0,0,0.28), 0 0 22px rgba(120,150,255,0.11)",
             }}
           >
             <div
               style={{
-                width: "44px",
-                height: "5px",
-                borderRadius: "999px",
-                background: "rgba(255,255,255,0.22)",
-                margin: "0 auto 14px",
-              }}
-            />
-            <div style={{ fontSize: "16px", fontWeight: 500, opacity: 0.9, marginBottom: "14px" }}>
-              Share this moment
-            </div>
-            {(() => {
-              const text = shareData.shareText;
-              const url = shareData.finalUrl;
-              const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`;
-              const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
-              const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-              const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-              const redditUrl = `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(shareData.shortLine)}`;
-              const smsUrl = `sms:?body=${encodeURIComponent(text + " " + url)}`;
-              const buttonStyle = {
+                width: "min(72%, 280px)",
+                justifySelf: "end",
+                padding: "14px 16px",
+                borderRadius: "18px",
+                background: "rgba(84,98,215,0.86)",
                 fontSize: "15px",
+                lineHeight: 1.45,
                 fontWeight: 500,
-                padding: "13px 12px",
-                borderRadius: "14px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "white",
-                opacity: 0.92,
-                cursor: "pointer",
-                transition: "background 0.2s ease",
-              } as const;
+              }}
+            >
+              I feel lost today.
+            </div>
+            <div
+              style={{
+                width: "min(84%, 100%)",
+                padding: "15px 17px",
+                borderRadius: "18px",
+                background: "rgba(255,255,255,0.11)",
+                fontSize: "16px",
+                lineHeight: 1.55,
+                opacity: 0.96,
+              }}
+            >
+              You are not alone. Take a breath. One step at a time.
+            </div>
+          </section>
 
-              return (
-                <>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "12px",
-                    }}
-                  >
-                    <button type="button" style={buttonStyle} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onClick={() => openShareWindow(whatsappUrl)}>WhatsApp</button>
-                    <button type="button" style={buttonStyle} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onClick={() => openShareWindow(telegramUrl)}>Telegram</button>
-                    <button type="button" style={buttonStyle} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onClick={() => openShareWindow(twitterUrl)}>X</button>
-                    <button type="button" style={buttonStyle} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onClick={() => openShareWindow(facebookUrl)}>Facebook</button>
-                    <button type="button" style={buttonStyle} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onClick={() => openShareWindow(redditUrl)}>Reddit</button>
-                    <button type="button" style={buttonStyle} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")} onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onClick={() => openShareWindow(smsUrl)}>SMS</button>
-                  </div>
-                  <button
-                    type="button"
-                    style={{
-                      ...buttonStyle,
-                      width: "100%",
-                      background: "rgba(255,255,255,0.1)",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.1)")}
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(shareData.finalUrl);
-                        setShareCopiedFlash(true);
-                        window.setTimeout(() => setShareCopiedFlash(false), 1100);
-                      } catch (err) {
-                        console.error("Failed to copy share link", err);
-                      }
-                      setShowShareModal(false);
-                    }}
-                  >
-                    Copy Link
-                  </button>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      ) : null}
+          <section style={{ textAlign: "center", display: "grid", gap: "6px", marginTop: "4px" }}>
+            <p style={{ margin: 0, fontSize: "20px", lineHeight: 1.5, opacity: 0.9 }}>
+              Some days feel heavy.
+            </p>
+            <p style={{ margin: 0, fontSize: "20px", lineHeight: 1.5, opacity: 0.9 }}>
+              You don&apos;t need perfect words.
+            </p>
+            <p style={{ margin: 0, fontSize: "20px", lineHeight: 1.5, opacity: 0.9 }}>
+              Just speak. He listens.
+            </p>
+          </section>
 
-      <div
-        className={`paywall-backdrop${showPaywall ? " paywall-backdrop--visible" : ""}`}
-        role="presentation"
-        aria-hidden={!showPaywall}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) dismissPaywall();
-        }}
-      >
-        <div
-          className="paywall-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="paywall-title"
-          aria-describedby="paywall-subtitle"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h2 id="paywall-title" className="paywall-panel__title">
-            {PAYWALL_COPY.title}
-          </h2>
-          <p id="paywall-subtitle" className="paywall-panel__subtitle">
-            {PAYWALL_COPY.subtitle}
+          <p style={{ margin: "0", textAlign: "center", fontSize: "14px", opacity: 0.65 }}>
+            Private. Personal. Just you and Him.
           </p>
-          <button
-            type="button"
-            className="paywall-panel__cta"
-            onClick={handleSubscribe}
-          >
-            {PAYWALL_COPY.cta}
-          </button>
-          <button
-            type="button"
-            className="paywall-panel__secondary"
-            onClick={dismissPaywall}
-          >
-            {PAYWALL_COPY.dismiss}
-          </button>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
