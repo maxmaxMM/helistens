@@ -288,9 +288,108 @@ export default function Home() {
   return (
     <>
       <style>{`
-        .chat-action:hover {
-          transform: translateY(-1px);
-          filter: brightness(1.08);
+        .chat-action {
+          appearance: none;
+          margin: 0;
+          border-radius: 999px;
+          padding: 10px 6px;
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          color: rgba(255, 255, 255, 0.86);
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            0 2px 12px rgba(0, 0, 0, 0.22);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          cursor: pointer;
+          transition:
+            transform 0.18s ease,
+            background 0.22s ease,
+            border-color 0.22s ease,
+            box-shadow 0.22s ease,
+            color 0.22s ease,
+            opacity 0.18s ease;
+        }
+        .chat-action:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.11);
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.14),
+            0 4px 16px rgba(0, 0, 0, 0.28);
+        }
+        .chat-action:active:not(:disabled) {
+          transform: scale(0.97);
+          background: rgba(255, 255, 255, 0.09);
+        }
+        .chat-action:disabled {
+          opacity: 0.42;
+          cursor: not-allowed;
+        }
+
+        .send-btn {
+          height: 48px;
+          padding: 0 18px;
+          border-radius: 14px;
+          font-weight: 600;
+          flex-shrink: 0;
+          cursor: pointer;
+          transition:
+            background 0.28s ease,
+            color 0.28s ease,
+            border-color 0.28s ease,
+            box-shadow 0.28s ease,
+            opacity 0.28s ease,
+            transform 0.18s ease;
+        }
+        .send-btn:disabled {
+          background: rgba(255, 255, 255, 0.06);
+          color: rgba(255, 255, 255, 0.38);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: none;
+          cursor: not-allowed;
+        }
+        .send-btn--ready {
+          color: rgba(18, 22, 36, 0.92);
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.93) 0%,
+            rgba(232, 236, 248, 0.88) 100%
+          );
+          border: 1px solid rgba(255, 255, 255, 0.38);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            0 2px 14px rgba(80, 110, 180, 0.18);
+          animation: send-breathe 3.4s ease-in-out infinite;
+        }
+        .send-btn--ready:hover:not(:disabled) {
+          transform: translateY(-0.5px);
+        }
+        .send-btn--ready:active:not(:disabled) {
+          transform: scale(0.98);
+          animation: none;
+        }
+        @keyframes send-breathe {
+          0%,
+          100% {
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.5),
+              0 2px 12px rgba(70, 95, 160, 0.14);
+            opacity: 1;
+          }
+          50% {
+            box-shadow:
+              inset 0 1px 0 rgba(255, 255, 255, 0.62),
+              0 3px 20px rgba(90, 120, 200, 0.22);
+            opacity: 0.96;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .send-btn--ready {
+            animation: none;
+          }
         }
         .share-sheet-backdrop {
           position: fixed;
@@ -509,17 +608,17 @@ export default function Home() {
             gap: "10px",
           }}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px" }}>
-            <button className="chat-action" onClick={handleVerse} disabled={loading}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px" }}>
+            <button type="button" className="chat-action" onClick={handleVerse} disabled={loading}>
               Verse
             </button>
-            <button className="chat-action" onClick={handlePrayer} disabled={loading}>
+            <button type="button" className="chat-action" onClick={handlePrayer} disabled={loading}>
               Prayer
             </button>
-            <button className="chat-action" onClick={openShareSheet}>
+            <button type="button" className="chat-action" onClick={openShareSheet}>
               Share
             </button>
-            <button className="chat-action" onClick={handleSave}>
+            <button type="button" className="chat-action" onClick={handleSave}>
               Save
             </button>
           </div>
@@ -546,6 +645,8 @@ export default function Home() {
             />
 
             <button
+              type="button"
+              className={`send-btn${input.trim() && !loading ? " send-btn--ready" : ""}`}
               onClick={async () => {
                 if (!input.trim() || loading) return;
 
@@ -583,24 +684,9 @@ export default function Home() {
                 }
               }}
               disabled={!input.trim() || loading}
-              style={{
-                height: "48px",
-                padding: "0 18px",
-                borderRadius: "14px",
-                background: input.trim() && !loading ? "#fff" : "rgba(255,255,255,0.22)",
-                color: input.trim() && !loading ? "#000" : "rgba(255,255,255,0.62)",
-                border: "none",
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
             >
               Send
             </button>
-          </div>
-
-          <div style={{ color: "#fff", fontSize: "12px", marginTop: "2px", opacity: 0.88 }}>
-            input: {JSON.stringify(input)} | trimmed: {JSON.stringify(input.trim())} | disabled:{" "}
-            {String(!input.trim() || loading)}
           </div>
         </div>
       </div>
