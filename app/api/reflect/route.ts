@@ -165,11 +165,24 @@ function detectEmotion(text: string): string {
 
 function detectIntent(text: string): string {
   const t = text.toLowerCase();
-  if (/(what should i do|direction|next step|decide|decision)/.test(t)) return "seeking direction";
+  if (/(what should i do|what can i do|what do i do|direction|next step|decide|decision)/.test(t)) return "seeking direction";
   if (/(please pray|pray for me|prayer)/.test(t)) return "asking for prayer";
   if (/(why|understand|make sense|meaning)/.test(t)) return "seeking understanding";
   if (/(help me calm|calm down|settle|peace|rest)/.test(t)) return "seeking calm";
   return "seeking support";
+}
+
+function shouldOfferGentleGuidance(text: string, intent: string, emotion: string): boolean {
+  if (emotion === "lost") return true;
+  if (intent === "seeking direction") return true;
+  const t = text.toLowerCase();
+  if (
+    /(stuck|confus|don'?t know what|no idea what|not sure what|helpless|trapped|nowhere to turn|at a loss)/.test(t)
+  ) {
+    return true;
+  }
+  if (/(怎么办|不知道该怎么|不知所措|迷茫|没方向)/.test(text)) return true;
+  return false;
 }
 
 function mapTheme(emotion: string): Theme {
@@ -234,6 +247,7 @@ export async function POST(req: Request) {
   const cleanedInput = input.trim();
   const language = detectLanguage(cleanedInput);
   const analysis = analyzeMessage(cleanedInput);
+  const gentleGuidance = shouldOfferGentleGuidance(cleanedInput, analysis.intent, analysis.emotion);
   const selectedVerse = getVerseForTheme(analysis.theme, language);
   const shouldAskQuestion = replyCounter % 5 === 4;
   replyCounter += 1;
@@ -250,6 +264,7 @@ Internal context—sense their tone; never repeat these labels to the user:
 - bible theme for curated verse (system only): ${analysis.theme}
 - user language: ${language}
 - include a question in "reply" this turn: ${shouldAskQuestion ? "yes" : "no"}
+- optional gentle next steps (lost / stuck / what to do): ${gentleGuidance ? "yes" : "no"}
 
 Tone:
 - Warm, gentle, grounded. Human, not clinical.
@@ -262,11 +277,20 @@ Validation (natural language; vary wording and rhythm every time; do not reuse t
 - Good style: "That kind of behavior can really sting. No wonder you're angry."
 
 Sentence style:
-- "reply": 1–3 short sentences. Change structure and pacing each turn (sometimes one punchy line; sometimes two uneven beats).
+- "reply": 1–3 short sentences when gentle guidance is off; when on, stay compact (at most 4 very short sentences total). Change structure and pacing each turn.
 - No long paragraphs. No over-explaining. No generic AI filler.
 
+8. Gentle guidance (only when "optional gentle next steps" is yes—otherwise skip entirely; stay with empathy only):
+- When they feel confused, stuck, or are asking what they can do, offer 1–2 simple, human, realistic options like a caring friend—not a therapist, expert, or coach.
+- Keep the guidance portion to 1–2 short sentences max, soft and non-authoritative. Use optional language: maybe, sometimes, it might help, if you feel up to it, one small step.
+- Structure inside "reply": (1) acknowledge the feeling, (2) one gentle suggestion or two tiny alternatives, (3) return to emotional support (e.g. permission to go slow: you don't have to solve everything today).
+- Never overwhelm with lists or steps. Never sound like orders ("you should", "you need to", "immediately").
+- Bad: "You should talk to a therapist and set boundaries immediately."
+- Good: "That kind of situation can feel really overwhelming. Maybe starting with a calm conversation could help, if you feel ready."
+- Other tone examples (adapt to language): "Sometimes it helps to talk it out with them, even if it's messy." "Or maybe just take a bit of space first, so you can think clearly." "You don't have to fix everything today."
+
 Avoid:
-- Unsolicited advice unless it is tiny, optional, and sounds spoken aloud.
+- Heavy or unsolicited how-to advice when gentle guidance is no.
 - Preaching, moralizing, fixing, or reframing their story for them.
 
 Faith (gentle offering, never forced):
@@ -287,6 +311,7 @@ Return ONLY valid JSON in this exact format:
 
 Rules:
 - If "include a question this turn" is "yes", end "reply" with one gentle question. If "no", do not use a question mark in "reply".
+- If gentle guidance is yes, you may combine a soft question with optional suggestions only if it still sounds like a friend—not a checklist.
 - If memory exists, weave continuity in only when it feels human—never forced or repetitive.
 - Stay safe and kind; never shame the user.
 `.trim();

@@ -46,7 +46,16 @@ export default function ShareCta({ line, comfort, verse, verseRef }: ShareCtaPro
 
   async function copyLink() {
     const shareUrl = buildShareUrl();
-    await navigator.clipboard.writeText(shareUrl);
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(shareUrl);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
   }

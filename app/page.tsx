@@ -336,59 +336,44 @@ export default function Home() {
           font-weight: 600;
           flex-shrink: 0;
           cursor: pointer;
-          transition:
-            background 0.28s ease,
-            color 0.28s ease,
-            border-color 0.28s ease,
-            box-shadow 0.28s ease,
-            opacity 0.28s ease,
-            transform 0.18s ease;
+          transition: all 0.3s ease;
         }
         .send-btn:disabled {
-          background: rgba(255, 255, 255, 0.06);
-          color: rgba(255, 255, 255, 0.38);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #333;
+          color: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           box-shadow: none;
+          animation: none;
           cursor: not-allowed;
         }
         .send-btn--ready {
-          color: rgba(18, 22, 36, 0.92);
-          background: linear-gradient(
-            180deg,
-            rgba(255, 255, 255, 0.93) 0%,
-            rgba(232, 236, 248, 0.88) 100%
-          );
-          border: 1px solid rgba(255, 255, 255, 0.38);
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            0 2px 14px rgba(80, 110, 180, 0.18);
-          animation: send-breathe 3.4s ease-in-out infinite;
+          color: rgba(22, 24, 32, 0.9);
+          background: rgba(255, 255, 255, 0.94);
+          border: 1px solid rgba(255, 255, 255, 0.42);
+          box-shadow: 0 0 0 rgba(255, 255, 255, 0.15);
+          animation: breathe 3.2s ease-in-out infinite;
         }
         .send-btn--ready:hover:not(:disabled) {
-          transform: translateY(-0.5px);
+          background: rgba(255, 255, 255, 0.97);
         }
         .send-btn--ready:active:not(:disabled) {
           transform: scale(0.98);
-          animation: none;
         }
-        @keyframes send-breathe {
-          0%,
-          100% {
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.5),
-              0 2px 12px rgba(70, 95, 160, 0.14);
-            opacity: 1;
+        @keyframes breathe {
+          0% {
+            box-shadow: 0 0 0 rgba(255, 255, 255, 0.15);
           }
           50% {
-            box-shadow:
-              inset 0 1px 0 rgba(255, 255, 255, 0.62),
-              0 3px 20px rgba(90, 120, 200, 0.22);
-            opacity: 0.96;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+          }
+          100% {
+            box-shadow: 0 0 0 rgba(255, 255, 255, 0.15);
           }
         }
         @media (prefers-reduced-motion: reduce) {
           .send-btn--ready {
             animation: none;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.22);
           }
         }
         .share-sheet-backdrop {
@@ -532,8 +517,40 @@ export default function Home() {
             color: "white",
           }}
         >
-          <section style={{ textAlign: "center", display: "grid", gap: "4px", paddingTop: "0" }}>
-            <h1 style={{ margin: 0, fontSize: "46px", letterSpacing: "-0.04em", lineHeight: 1.05 }}>He listens.</h1>
+          <section
+            style={{
+              textAlign: "center",
+              display: "grid",
+              gap: "10px",
+              paddingTop: "0",
+              maxWidth: "520px",
+              margin: "0 auto",
+              width: "100%",
+            }}
+          >
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "clamp(28px, 7vw, 40px)",
+                letterSpacing: "-0.03em",
+                lineHeight: 1.12,
+                fontWeight: 600,
+              }}
+            >
+              You don&apos;t have to carry this alone.
+            </h1>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "15px",
+                lineHeight: 1.45,
+                fontWeight: 400,
+                opacity: 0.66,
+                color: "rgba(255,255,255,0.92)",
+              }}
+            >
+              You can say it here. No need to make it sound okay.
+            </p>
           </section>
 
           <section
@@ -630,7 +647,7 @@ export default function Home() {
                 console.log("CHANGE FIRED", e.target.value);
                 setInput(e.target.value);
               }}
-              placeholder="Type here..."
+              placeholder="Type what's on your heart..."
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -646,7 +663,7 @@ export default function Home() {
 
             <button
               type="button"
-              className={`send-btn${input.trim() && !loading ? " send-btn--ready" : ""}`}
+              className={`send-btn${input.trim() ? " send-btn--ready" : ""}`}
               onClick={async () => {
                 if (!input.trim() || loading) return;
 
@@ -683,7 +700,7 @@ export default function Home() {
                   setIsSending(false);
                 }
               }}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim()}
             >
               Send
             </button>
