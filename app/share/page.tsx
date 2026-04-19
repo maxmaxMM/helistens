@@ -1,14 +1,25 @@
 import ShareCta from "./ShareCta";
 import type { Metadata } from "next";
 
-type ParamValue = string | string[] | undefined;
-
-type SharePageProps = {
-  searchParams: Promise<Record<string, ParamValue>>;
+/** Query keys from the share URL — read via the page `searchParams` prop (server), not `useSearchParams`. */
+type SharePageSearchParams = {
+  line?: string | string[];
+  comfort?: string | string[];
+  verse?: string | string[];
+  ref?: string | string[];
 };
 
-function pickParam(value: ParamValue, fallback: string): string {
-  const raw = Array.isArray(value) ? value[0] : value;
+type SharePageProps = {
+  searchParams: Promise<SharePageSearchParams>;
+};
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function pickParam(value: string | string[] | undefined, fallback: string): string {
+  const raw = firstParam(value);
   if (typeof raw !== "string") return fallback;
   if (raw.length === 0) return fallback;
   return raw;
@@ -56,21 +67,17 @@ export async function generateMetadata({ searchParams }: SharePageProps): Promis
   };
 }
 
-export default async function SharePage({ searchParams }: SharePageProps) {
-  const params = await searchParams;
-
-  // Strict display rule:
-  // - Never paraphrase Bible verses
-  // - Never alter the user's original message
-  // - Only display exactly what is passed in URL params
-  const line = pickParam(params.line, "I felt really low today.");
-  const comfort = pickParam(params.comfort, "You are not alone.");
-  const verse = pickParam(
-    params.verse,
-    "The Lord is close to the brokenhearted and saves those who are crushed in spirit."
-  );
-  const ref = pickParam(params.ref, "Psalm 34:18");
-
+function SharePageView({
+  line,
+  comfort,
+  verse,
+  ref,
+}: {
+  line: string;
+  comfort: string;
+  verse: string;
+  ref: string;
+}) {
   return (
     <main
       className="share-page-sky"
@@ -172,4 +179,18 @@ export default async function SharePage({ searchParams }: SharePageProps) {
       </article>
     </main>
   );
+}
+
+export default async function SharePage({ searchParams }: SharePageProps) {
+  const sp = await searchParams;
+
+  const line = pickParam(sp.line, "I felt really low today.");
+  const comfort = pickParam(sp.comfort, "You are not alone.");
+  const verse = pickParam(
+    sp.verse,
+    "The Lord is close to the brokenhearted and saves those who are crushed in spirit."
+  );
+  const ref = pickParam(sp.ref, "Psalm 34:18");
+
+  return <SharePageView line={line} comfort={comfort} verse={verse} ref={ref} />;
 }
