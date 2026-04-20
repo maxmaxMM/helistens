@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import DevServiceWorkerCleanup from "./DevServiceWorkerCleanup";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,7 +19,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {process.env.NODE_ENV === "development" ? <DevServiceWorkerCleanup /> : null}
         {children}
       </body>
     </html>
