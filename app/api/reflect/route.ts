@@ -151,6 +151,18 @@ let memory = "";
 const recentVerseByTheme: Partial<Record<`${SupportedLanguage}-${Theme}`, number>> = {};
 let replyCounter = 0;
 let lastReplyHadQuestion = false;
+let recentToneWords: string[] = [];
+
+const EN_TONE_REGEX = /\b(tough|hard|heavy|painful|difficult|rough|overwhelming|crushing|exhausting|draining|harsh|brutal|devastating)\b/gi;
+const ZH_TONE_REGEX = /(难受|艰难|沉重|心酸|疲惫|痛苦|辛苦|不容易|煎熬|煎心)/g;
+
+function extractToneWords(text: string): string[] {
+  const found = [
+    ...(text.match(EN_TONE_REGEX) ?? []),
+    ...(text.match(ZH_TONE_REGEX) ?? []),
+  ].map((w) => w.toLowerCase());
+  return Array.from(new Set(found));
+}
 
 function detectEmotion(text: string): string {
   const t = text.toLowerCase();
@@ -275,6 +287,8 @@ Internal context (do not mention these directly):
 - language: ${language}
 - previous reply already ended with a question: ${lastReplyHadQuestion ? "yes" : "no"}
 - ask a question in "reply" this turn: ${shouldAskQuestion ? "yes" : "no"}
+- emotional/tone words already used in the previous reply (must not reuse this turn): ${recentToneWords.length ? recentToneWords.join(", ") : "(none)"}
+- emotional direction to align with: ${analysis.emotion === "uncertain" ? "unclear — lean toward empathy and seriousness, not positivity" : "serious / empathetic (user is expressing " + analysis.emotion + ")"}
 
 STRICT RULES:
 
@@ -291,6 +305,16 @@ STRICT RULES:
 - It is okay to sound slightly imperfect, casual, simple, and human.
 
 - Write like you are texting a close friend, not writing a response.
+
+- Avoid generic emotional labels unless truly unavoidable. Do not reach for words like "tough", "hard", "heavy", "painful", "difficult", "rough", "overwhelming", "exhausting", or Chinese equivalents like "难受", "艰难", "沉重", "痛苦", "辛苦", "不容易" as a way to name how something feels. Instead, respond to the specific situation in a concrete, human way — mention what actually happened or what the user just said, in their own details.
+
+- Do not generalize pain. Stay personal, specific, and grounded in what the user actually described. No broad statements about suffering in general.
+
+- Do not repeat emotional tone across turns. If the previous reply already used a word like "hard", "painful", "heavy" (or any word in the tone list above, in either language), do not use it again this turn. Find a new angle or a more specific detail instead — something from what they just said that you have not named yet.
+
+- Always align with the emotional direction of the user. Never contradict the weight of their situation. If they are expressing pain, loss, confusion, grief, fear, shame, or distress, never respond with positivity, excitement, cheerfulness, exclamation marks, upbeat encouragement, or a light tone. No "that's great", "that's amazing", "wow", "congrats", "love that", "how exciting", "yay", "真棒", "太好了", "恭喜", etc. unless the user has clearly and unambiguously framed something as positive themselves.
+
+- If the emotional direction is unclear, lean slightly toward empathy and seriousness rather than positivity. Never assume something is good news unless the user explicitly signals it as positive.
 
 STRUCTURE (return ONLY JSON):
 
@@ -325,6 +349,12 @@ Ask for something specific (peace, strength, clarity, guidance, courage, comfort
 
 Tone:
 gentle, grounded, real, human, not poetic AI.
+
+Cadence:
+- Clarity first. Most sentences should be clear, complete, and easy to read.
+- Occasionally — roughly 20–30% of the time, not more — allow a small natural pause, a short fragment, or a slightly imperfect phrasing, like a real person texting. Think "Yeah… that's a lot." or "I know. Really.", not every line.
+- Never break a sentence if it makes the meaning harder to understand. If in doubt, keep it normal.
+- Do not stack fragments back-to-back or turn every reply into broken phrases — that reads as unnatural.
 
 Language:
 Use ONLY ${language === "zh" ? "Chinese" : "English"}.
@@ -418,6 +448,7 @@ Use ONLY ${language === "zh" ? "Chinese" : "English"}.
 
     memory = `User said: ${cleanedInput}`;
     lastReplyHadQuestion = /[?？]/.test(responsePayload.reply);
+    recentToneWords = extractToneWords(responsePayload.reply);
 
     return NextResponse.json(responsePayload);
   } catch (error) {
